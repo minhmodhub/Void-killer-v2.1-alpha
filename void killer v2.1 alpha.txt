@@ -1,0 +1,428 @@
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+--==================================================
+-- GUI
+--==================================================
+
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "TPAllGUI"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+
+--==================================================
+-- ICON TRÒN
+--==================================================
+
+local Icon = Instance.new("TextButton")
+Icon.Name = "OpenButton"
+Icon.Size = UDim2.fromOffset(55, 55)
+Icon.Position = UDim2.new(0, 30, 0.5, -27)
+Icon.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+Icon.Text = "TP"
+Icon.TextColor3 = Color3.new(1, 1, 1)
+Icon.TextSize = 16
+Icon.Font = Enum.Font.GothamBold
+Icon.Parent = ScreenGui
+
+local IconCorner = Instance.new("UICorner")
+IconCorner.CornerRadius = UDim.new(1, 0)
+IconCorner.Parent = Icon
+
+local IconStroke = Instance.new("UIStroke")
+IconStroke.Thickness = 2
+IconStroke.Color = Color3.fromRGB(255, 255, 255)
+IconStroke.Parent = Icon
+
+--==================================================
+-- FRAME
+--==================================================
+
+local Frame = Instance.new("Frame")
+Frame.Name = "MainFrame"
+Frame.Size = UDim2.fromOffset(280, 175)
+Frame.Position = UDim2.new(0.5, -140, 0.5, -87)
+Frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+Frame.Visible = false
+Frame.Parent = ScreenGui
+
+local FrameCorner = Instance.new("UICorner")
+FrameCorner.CornerRadius = UDim.new(0, 12)
+FrameCorner.Parent = Frame
+
+local FrameStroke = Instance.new("UIStroke")
+FrameStroke.Thickness = 2
+FrameStroke.Color = Color3.fromRGB(70, 70, 70)
+FrameStroke.Parent = Frame
+
+--==================================================
+-- TITLE
+--==================================================
+
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1, 0, 0, 40)
+Title.BackgroundTransparency = 1
+Title.Text = "TP All Players"
+Title.TextColor3 = Color3.new(1, 1, 1)
+Title.TextSize = 18
+Title.Font = Enum.Font.GothamBold
+Title.Parent = Frame
+
+--==================================================
+-- TP BUTTON
+--==================================================
+
+local TPButton = Instance.new("TextButton")
+TPButton.Size = UDim2.new(1, -30, 0, 50)
+TPButton.Position = UDim2.new(0, 15, 0, 50)
+TPButton.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+TPButton.Text = "TP ALL"
+TPButton.TextColor3 = Color3.new(1, 1, 1)
+TPButton.TextSize = 16
+TPButton.Font = Enum.Font.GothamBold
+TPButton.Parent = Frame
+
+local ButtonCorner = Instance.new("UICorner")
+ButtonCorner.CornerRadius = UDim.new(0, 8)
+ButtonCorner.Parent = TPButton
+
+--==================================================
+-- STATUS
+--==================================================
+
+local Status = Instance.new("TextLabel")
+Status.Size = UDim2.new(1, -30, 0, 30)
+Status.Position = UDim2.new(0, 15, 0, 115)
+Status.BackgroundTransparency = 1
+Status.Text = "Ready"
+Status.TextColor3 = Color3.fromRGB(200, 200, 200)
+Status.TextSize = 13
+Status.Font = Enum.Font.Gotham
+Status.Parent = Frame
+
+--==================================================
+-- MỞ / ĐÓNG GUI
+--==================================================
+
+Icon.MouseButton1Click:Connect(function()
+    Frame.Visible = not Frame.Visible
+end)
+
+--==================================================
+-- DRAG
+--==================================================
+
+local function MakeDraggable(Object)
+
+    local Dragging = false
+    local DragStart
+    local StartPosition
+
+    Object.InputBegan:Connect(function(Input)
+
+        if Input.UserInputType == Enum.UserInputType.MouseButton1
+        or Input.UserInputType == Enum.UserInputType.Touch then
+
+            Dragging = true
+            DragStart = Input.Position
+            StartPosition = Object.Position
+
+            Input.Changed:Connect(function()
+
+                if Input.UserInputState == Enum.UserInputState.End then
+                    Dragging = false
+                end
+
+            end)
+
+        end
+
+    end)
+
+    Object.InputChanged:Connect(function(Input)
+
+        if Input.UserInputType == Enum.UserInputType.MouseMovement
+        or Input.UserInputType == Enum.UserInputType.Touch then
+
+            if Dragging then
+
+                local Delta = Input.Position - DragStart
+
+                Object.Position = UDim2.new(
+                    StartPosition.X.Scale,
+                    StartPosition.X.Offset + Delta.X,
+
+                    StartPosition.Y.Scale,
+                    StartPosition.Y.Offset + Delta.Y
+                )
+
+            end
+
+        end
+
+    end)
+
+end
+
+MakeDraggable(Icon)
+MakeDraggable(Frame)
+
+--==================================================
+-- TP ALL - BAY NHANH
+--==================================================
+
+local Running = false
+local FlySpeed = 300
+
+local function FastFly(Root, TargetCFrame)
+    if not Root or not Root.Parent then
+        return false
+    end
+
+    local StartPosition = Root.Position
+    local TargetPosition = TargetCFrame.Position
+
+    local Distance = (TargetPosition - StartPosition).Magnitude
+    local Duration = Distance / FlySpeed
+
+    local StartTime = tick()
+
+    while tick() - StartTime < Duration do
+        if not Root or not Root.Parent then
+            return false
+        end
+
+        local Alpha = math.clamp(
+            (tick() - StartTime) / Duration,
+            0,
+            1
+        )
+
+        local Position = StartPosition:Lerp(
+            TargetPosition,
+            Alpha
+        )
+
+        Root.CFrame = CFrame.new(Position) * TargetCFrame.Rotation
+
+        task.wait()
+    end
+
+    Root.CFrame = TargetCFrame
+
+    return true
+end
+
+local function TPAllPlayers()
+
+    if Running then
+        return
+    end
+
+    Running = true
+    TPButton.Text = "FLYING..."
+
+    local Character = LocalPlayer.Character
+
+    if not Character then
+        Running = false
+        TPButton.Text = "TP ALL"
+        return
+    end
+
+    local Root = Character:FindFirstChild("HumanoidRootPart")
+
+    if not Root then
+        Running = false
+        TPButton.Text = "TP ALL"
+        return
+    end
+
+    -- Lưu vị trí ban đầu
+    local OldCFrame = Root.CFrame
+
+    --==================================================
+    -- LẤY DANH SÁCH PLAYER
+    --==================================================
+
+    local Targets = {}
+
+    for _, Player in ipairs(Players:GetPlayers()) do
+        if Player ~= LocalPlayer then
+            table.insert(Targets, Player)
+        end
+    end
+
+    --==================================================
+    -- BAY TỚI TỪNG PLAYER
+    --==================================================
+
+    for Index, Player in ipairs(Targets) do
+
+        if not Root or not Root.Parent then
+            break
+        end
+
+        local TargetCharacter = Player.Character
+
+        if TargetCharacter then
+
+            local TargetRoot =
+                TargetCharacter:FindFirstChild("HumanoidRootPart")
+
+            if TargetRoot then
+
+                -- Bay tới phía sau player 5 studs
+                local TargetCFrame =
+                    TargetRoot.CFrame * CFrame.new(0, 0, 5)
+
+                Status.Text =
+                    "Bay tới " .. Index .. " / " .. #Targets
+
+                FastFly(Root, TargetCFrame)
+
+                task.wait(0.2)
+            end
+        end
+    end
+
+    --==================================================
+    -- TẠO PART 50x50 Ở Y = -200
+    --==================================================
+
+    Status.Text = "Đang bay xuống Y = -200"
+
+    local VoidPosition = Vector3.new(0, -200, 0)
+
+    local Part = Instance.new("Part")
+    Part.Name = "TPVoidStand"
+    Part.Size = Vector3.new(50, 1, 50)
+    Part.Anchored = true
+    Part.CanCollide = true
+    Part.Transparency = 0.25
+    Part.CFrame = CFrame.new(VoidPosition)
+    Part.Parent = workspace
+
+    --==================================================
+    -- BAY XUỐNG PART
+    --==================================================
+
+    if Root and Root.Parent then
+
+        local VoidCFrame =
+            Part.CFrame * CFrame.new(0, 3, 0)
+
+        FastFly(Root, VoidCFrame)
+    end
+
+    --==================================================
+    -- CHỜ 5 GIÂY
+    --==================================================
+
+    Status.Text = "Đang chờ 5 giây..."
+
+    task.wait(5)
+
+    --==================================================
+    -- BAY NHANH VỀ VỊ TRÍ CŨ
+    --==================================================
+
+    if Root and Root.Parent then
+
+        Status.Text = "Đang bay về..."
+
+        FastFly(Root, OldCFrame)
+    end
+
+    --==================================================
+    -- XÓA PART
+    --==================================================
+
+    if Part and Part.Parent then
+        Part:Destroy()
+    end
+
+    Status.Text = "Hoàn thành"
+    TPButton.Text = "TP ALL"
+
+    Running = false
+end
+
+    --==================================================
+    -- TẠO PART 50x50 Ở Y = -200
+    --==================================================
+
+    Status.Text = "Đang xuống Y = -200"
+
+    local VoidPosition = Vector3.new(0, -200, 0)
+
+    local Part = Instance.new("Part")
+
+    Part.Name = "TPVoidStand"
+
+    -- Kích thước 50 x 50
+    Part.Size = Vector3.new(50, 1, 50)
+
+    Part.Anchored = true
+    Part.CanCollide = true
+    Part.Transparency = 0.25
+
+    -- Vị trí Part
+    Part.CFrame = CFrame.new(VoidPosition)
+
+    Part.Parent = workspace
+
+    --==================================================
+    -- ĐƯA NHÂN VẬT LÊN TRÊN PART
+    --==================================================
+
+    if Root and Root.Parent then
+
+        -- Nhân vật đứng cách mặt Part 3 studs
+        Root.CFrame =
+            Part.CFrame * CFrame.new(0, 3, 0)
+
+    end
+
+    --==================================================
+    -- CHỜ 5 GIÂY
+    --==================================================
+
+    Status.Text = "Đang chờ 5 giây..."
+
+    task.wait(5)
+
+    --==================================================
+    -- QUAY VỀ VỊ TRÍ CŨ
+    --==================================================
+
+    if Root and Root.Parent then
+        Root.CFrame = OldCFrame
+    end
+
+    --==================================================
+    -- XÓA PART
+    --==================================================
+
+    if Part and Part.Parent then
+        Part:Destroy()
+    end
+
+    Status.Text = "Hoàn thành"
+    TPButton.Text = "TP ALL"
+
+    Running = false
+
+end
+
+--==================================================
+-- BUTTON
+--==================================================
+
+TPButton.MouseButton1Click:Connect(function()
+
+    task.spawn(function()
+        TPAllPlayers()
+    end)
+
+end)
